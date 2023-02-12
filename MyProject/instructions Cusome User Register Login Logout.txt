@@ -1,0 +1,461 @@
+Cusome User Register Login Logout
+
+using AbstractBaseUser
+#===============================================================================================
+
+Step 1 
+
+# create virtual enviroment and activate virtual enviroment
+
+>>> virtualenv env
+
+>>>env\scripts\activate
+
+#===============================================================================================
+
+Step 2
+
+# install project dependencies
+
+>>>pip install django
+
+
+#===============================================================================================
+
+# step 3
+
+open vs code 
+
+>>> code .
+
+#===============================================================================================
+
+Step 4
+
+# Create django project 
+
+>>> django-admin startproject MyProject
+
+#===============================================================================================
+
+# step 5
+
+Change Directory outer project to inner project folder
+
+>>> cd MyProject 
+
+
+#===============================================================================================
+
+Step 6
+
+# create Application 
+
+>>> python manage.py startapp MyApp
+
+
+#===============================================================================================
+
+# step 7
+
+install Application 
+
+open settings.py file inside inner project folder 
+Goto INSTALLED_APP and install Application 
+
+settings.py
+------------
+
+
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    'AccountsApp',
+]
+
+
+#===============================================================================================
+
+Step 8
+
+# create and configure templates Directory 
+# acreate and configer static Directory 
+
+
+-------------------
+create folder name templates along with manage.py
+create folder name static along with manage.py
+
+configure templates 
+-------------------
+
+open settings.py inside inner project folder 
+
+settings.py 
+-----------
+
+from pathlib import Path
+import os 
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+TEMPLATES_DIR = os.path.join(BASE_DIR , 'templates')
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [TEMPLATES_DIR],
+        'APP_DIRS': True,
+
+
+static
+-------
+
+
+STATIC_URL = 'static/'
+STATICFILES_DIRS = [os.path.join(BASE_DIR , 'STATIC')]
+
+
+
+#===============================================================================================
+
+
+Step 9
+
+
+Create Model 
+
+models.py
+----------
+class AccountModel(AbstractBaseUser):
+    first_name      = models.CharField(max_length=100)
+    last_name       = models.CharField(max_length=100)
+    username        = models.CharField(max_length=100 , unique = True)
+    email           = models.EmailField(max_length = 100 , unique = True )
+    phone_number    = models.CharField(max_length = 100)
+
+    # Required Fields 
+    date_joined     = models.DateTimeField(auto_now_add = True)
+    last_login      = models.DateTimeField(auto_now_add = True)
+    is_admin        = models.BooleanField(default = False)
+    is_staff        = models.BooleanField(default = False)
+    is_active       = models.BooleanField(default = False)
+
+    is_superadmin   = models.BooleanField(default = False)
+
+    #this Field is used for login
+    USERNAME_FIELD = 'email'  
+
+    # this field is required for register new user
+    REQUIRED_FIELDS = ['username' , 'first_name' , 'last_name']
+
+    objects = MyAccountsManager()
+
+    def __str__(self):
+        return self.email
+
+    # set for permissions 
+    def has_perm(self , perms , obj = None):
+        return self.is_admin
+
+    def has_module_perms(self , add_label):
+        return True
+
+
+
+#===============================================================================================
+
+# step 10
+
+create Account Managaer 
+create manager.py file inside application 
+
+manager.py
+-----------
+
+from django.contrib.auth.models import BaseUserManager
+
+class MyAccountsManager(BaseUserManager):
+
+    # method to create user 
+    def create_user(self , first_name , last_name , username , email  , password = None):
+        if not email:
+            raise ValueError("User Must Have Email-ID ...")
+
+        if not username:
+            raise ValueError("User Must have Username ...")
+
+        user = self.model( email = self.normalize_email(email) , username = username , first_name = first_name , last_name = last_name)
+        user.is_active = True
+        user.set_password(password)
+        user.save(using = self._db)
+        print("password :", password)
+        return user
+
+
+    #method to create superuser 
+    def create_superuser(self , first_name , last_name , email , username , password):
+
+        user = self.create_user(email = self.normalize_email(email) , username = username ,password = password, first_name = first_name , last_name = last_name )
+        user.is_admin = True
+        user.is_staff = True
+        user.is_active = True
+        user.is_superadmin = True
+
+        # print('user.is_superadmin :',user.is_superadmin)
+        # print('user.is_staff :',user.is_staff)
+        
+        user.save(using = self._db)
+        return user
+
+
+
+#===============================================================================================
+
+Step 11
+
+configure Custom model into a settings.py 
+
+settings.py
+------------
+
+WSGI_APPLICATION = 'MyProject.wsgi.application' 
+
+AUTH_USER_MODEL = 'AccountsApp.AccountsModel'  # Add this Line Below WSGI_APPLICATION near line 72 
+
+
+# Note
+'AccountsApp' -------Application Name 
+'AccountModel' ------ Custom Model Name 
+
+
+#===============================================================================================
+
+Step 12
+
+Create Query Set 
+
+>>>python manage.py makemigrations
+
+
+Execute Query Set 
+
+>>> python manage.py migrate
+
+
+Create Super User 
+
+>>> python manage.py createsuperuser
+
+Run server
+>>> python manage.py runserver
+
+#===============================================================================================
+
+Step 13
+
+create urls.py inside application 
+Note : dont use function name login logout ( its built in functions ) 
+
+urls.py  #(application level url )
+-------
+
+from django.urls import path
+from . import views
+
+
+urlpatterns = [
+    path('' , views.home_view , name = 'home' ),                 # used for login page
+    path('register/' , views.register_view , name = 'register' ),# used for register new user
+    path('signout/' , views.signout_view , name = 'signout' )   # used for logout user
+
+]
+
+
+#===============================================================================================
+
+Step 14
+
+include application urls into project urls 
+
+from django.contrib import admin
+from django.urls import path,include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('' , include('AccountsApp.urls')),
+]
+
+
+
+
+
+#===============================================================================================
+
+Step 15
+
+create views for urls 
+
+inside views.py ( function based view ) and test using HttpResponse
+
+Note : dont use function name login logout ( its built in functions ) 
+
+views.py
+--------
+
+from django.shortcuts import render
+from django.http import HttpResponse
+# Create your views here.
+
+
+def home_view(request):  
+    '''it is used for home page and login page'''
+    return HttpResponse('Home Page')
+
+
+def register_view(request):
+    '''it is used for register new user logic'''
+    return HttpResponse('Register Page')
+
+def signout_view(request):
+    '''it is used for logout user '''
+    return HttpResponse('logout Page  Page')
+
+
+
+
+
+
+#===============================================================================================
+
+Step 16 
+
+test Urls 
+
+in browser pater this links to test urls 
+
+
+test home page 
+http://127.0.0.1:8000/
+
+
+test register page 
+http://127.0.0.1:8000/register/
+
+
+test logout page 
+
+http://127.0.0.1:8000/signout/
+
+
+#===============================================================================================
+
+Step 17 
+
+Create html files inside templates folder 
+
+templates Name 
+
+
+home.html
+register.html
+
+
+after creating Html files render html file in views 
+
+views.py
+--------
+
+from django.shortcuts import render,redirect
+from django.http import HttpResponse
+# Create your views here.
+
+
+def home_view(request):  
+    '''it is used for home page and login page'''
+    # return HttpResponse('Home Page')
+
+
+    return render(request , 'home.html')
+
+def register_view(request):
+    '''it is used for register new user logic'''
+    # return HttpResponse('Register Page')
+
+    return render(request , 'register.html')
+
+def signout_view(request):
+    '''it is used for logout user '''
+    # return HttpResponse('logout Page  Page')
+
+    return redirect('home')
+
+    
+
+
+
+
+
+#===============================================================================================
+
+Step 18 
+
+create forms.py inside application directory 
+
+
+forms.py
+---------
+from django import forms
+from . models import AccountModel
+
+
+class RegisterForm(forms.ModelForm):
+    password = forms.CharField(label='Enter Password' , widget=forms.PasswordInput(attrs={'class':'form-control','placeholder':'Enter Password'}))
+    confirm_password = forms.CharField(label='Confirm Password' , widget=forms.PasswordInput(attrs={'class':'form-control','placeholder':'Confirm Password'}))
+    
+    class Meta:
+        model = AccountModel
+        
+        fields = ['first_name' , 'last_name' , 'username' , 'email' , 'phone_number', 'password' ]
+
+
+        labels = {
+            'first_name':'Enter First Name',
+            'last_name':'Enter Last Name',
+            'username' : 'Enter Username',
+            'email' : 'Enter Email-ID',
+            'phone_number' : 'Enter Contact Number',
+            'password' : 'Enter Password',
+        }
+
+        widgets = {
+            'first_name':forms.TextInput(attrs={'class':'form-control','placeholder':'Enter First Name'}),
+            'last_name':forms.TextInput(attrs={'class':'form-control','placeholder':'Enter Last Name'}),
+            'username':forms.TextInput(attrs={'class':'form-control' ,'placeholder':'Enter Username'}),
+            'email':forms.EmailInput(attrs={'class':'form-control','placeholder':'Enter Email-Id'}),
+            'phone_number':forms.TextInput(attrs={'class':'form-control','placeholder':'Enter Phone Number'}),
+            'password':forms.PasswordInput(attrs={'class':'form-control','placeholder':'Enter Password'}),
+        }
+
+
+
+#===============================================================================================
+
+Step 19
+
+import 
+
+
+#===============================================================================================
+
+
+#===============================================================================================
+
+
+#===============================================================================================
+
+
+#===============================================================================================
